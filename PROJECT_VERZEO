@@ -1,0 +1,116 @@
+#the following project contains two files train.csv and test.csv
+#download the file and change the file location as required
+import pandas as pd
+from matplotlib import pyplot as plt
+import statistics as st
+import numpy as np
+import seaborn as sns
+from sklearn import linear_model
+from sklearn.linear_model import LinearRegression
+import statsmodels.formula.api as smf
+from sklearn import metrics
+data=pd.read_csv('train.csv',index_col=0)
+print(data.info())
+data.Cabin.fillna(0)
+print(data.head(100))
+#using plots we can infer the following
+sns.barplot(x='Pclass',y='Survived',data=data)
+#Here we see clearly, that Pclass is contributing to a persons chance of survival, especially if this person is in class 1.
+grid = sns.FacetGrid(data, col='Survived', row='Pclass', size=5, aspect=1.6)
+grid.map(plt.hist, 'Age', alpha=.5, bins=20)
+print(grid.add_legend())
+cols = ['Sex','Pclass','Age','SibSp','Parch','Embarked']
+n_rows =2
+n_cols =3
+fig, axs = plt.subplots(n_rows, n_cols, figsize=(n_cols*3.2,n_rows*3.2))
+
+for r in range(0,n_rows):
+    for c in range(0,n_cols):  
+        
+        i = r*n_cols+ c       
+        ax = axs[r][c] 
+        sns.countplot(data[cols[i]], hue=data["Survived"], ax=ax)
+        ax.set_title(cols[i])
+        ax.legend(title="Survived", loc='upper right') 
+        
+plt.tight_layout() 
+#now using the linear regression model between pclass and age
+sns.pairplot(data,x_vars=['Pclass','Sex','Age','Fare'],y_vars=['Survived'],aspect=0.7,size=7)
+result = data.pivot_table(index=['Sex'], columns=['Pclass'], aggfunc='count')
+print(result)
+sns.heatmap(data.corr(),annot=True)
+#from the above plots it is clear that age,sex and fare paid have an effective impact on the survival conditions.
+data.Sex[data.Sex == 'male'] = 1
+data.Sex[data.Sex == 'female'] = 2
+data.groupby('Sex')[['Survived']].mean()
+data.pivot_table('Survived', index='Sex', columns='Pclass')
+data.pivot_table('Survived', index='Sex', columns='Pclass').plot()
+#using logical regression
+for val in data:
+    print(data[val].value_counts())
+    print()
+sns.catplot(x="Sex", y="Survived", hue="Sex", kind="bar", data=data);
+survived_prob3 = data.groupby('Pclass').size().div(len(data))
+print(survived_prob3)
+survived_prob1 = data.groupby('Survived').size().div(len(data))
+print(survived_prob1)
+#from the above conclusion it is clear that the third class had more chance of not surviving than other classes..
+df = pd.DataFrame({'a':[0.243517,0.207441,0.549042], 'person class':['1','2','3']})
+ax = df.plot.bar(x='person class', y='a', rot=0)
+sur= 'Survived'
+nsur = 'not Survived'
+fig,axes = plt.subplots(nrows=1,ncols=2,figsize=(10, 4))
+w= data[data['Sex']==2]
+m= data[data['Sex']==1]
+ax = sns.distplot(w[w['Survived']==1].Age.dropna(), bins=10, label = sur, ax = axes[0], kde =False)
+ax = sns.distplot(w[w['Survived']==0].Age.dropna(), bins=30, label = nsur, ax = axes[0], kde =False)
+ax.legend()
+ax.set_title('Female')
+ax = sns.distplot(m[m['Survived']==1].Age.dropna(), bins=10, label = sur, ax = axes[1], kde = False)
+ax = sns.distplot(m[m['Survived']==0].Age.dropna(), bins=30, label = nsur, ax = axes[1], kde = False)
+ax.legend()
+_ = ax.set_title('Male')
+#probability of men's survival is higher between 18 and 30 years old, which is also a true for women but not fully. For women the survival chances are higher between 14 and 40. P(MEN)<P(WOMEN) __ IN THE AGE RANGE(5,18) Infants also have a little bit higher probability of survival.
+
+#from the above data we can see that FARE of the ticket was also not a major factor as the coefficient comes out to be less than 0.05
+
+#From the above gaphs and analysis it is pretty clear that only age and persons's class mattered the most during the survival of the ship wreck. from the first title i.e:the persons class the people from the frist class survived the most. from the gender column females and infants were maximum in number. Hence even though survival is a luck task but still we can predict that upper class women were maximum survivors. below them are uper class men, than comes the women from second class,and so on.
+
+#using logistic regression
+plt.scatter(data.Survived,data.Sex)
+plt.scatter(data.Survived,data.Pclass)
+data = data.dropna(subset =['Embarked', 'Age','Cabin',])
+from sklearn.preprocessing import LabelEncoder
+labelencoder = LabelEncoder()
+data.iloc[:,2]= labelencoder.fit_transform(data.iloc[:,2].values)
+data.iloc[:,7]= labelencoder.fit_transform(data.iloc[:,7].values)
+print(data['Sex'].unique())
+X = data.iloc[:, 1:8].values 
+Y = data.iloc[:, 0].values 
+from sklearn.model_selection import train_test_split
+X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size = 0.2, random_state = 0)
+from sklearn.preprocessing import StandardScaler
+sc = StandardScaler()
+X_train = sc.fit_transform(X_train)
+X_test = sc.transform(X_test)
+def models(X_train,Y_train):
+    from sklearn.linear_model import LogisticRegression
+    logreg = LogisticRegression(random_state = 0)
+    logreg.fit(X_train, Y_train)
+    from sklearn.tree import DecisionTreeClassifier
+    tree = DecisionTreeClassifier(criterion = 'entropy', random_state = 0)
+    tree.fit(X_train, Y_train)
+    print('Logistic Regression Training Accuracy:', log.score(X_train, Y_train))
+    print('Decision Tree Classifier Training Accuracy:', tree.score(X_train, Y_train))
+    return log, tree 
+model = models(X_train,Y_train)
+from sklearn.metrics import confusion_matrix 
+for i in range(len(model)):
+    cm = confusion_matrix(Y_test, model[i].predict(X_test)) 
+    TN, FP, FN, TP = confusion_matrix(Y_test, model[i].predict(X_test)).ravel()
+    print(cm)
+    print('Model[{}] Testing Accuracy = "{}"'.format(i,  (TP + TN) / (TP + TN + FN + FP)),'\n')
+pred = model[0].predict(X_test)
+print(pred)
+print(Y_test)
+plt.plot(X_test,pred,color='orange')
